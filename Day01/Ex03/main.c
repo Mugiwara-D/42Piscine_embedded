@@ -29,15 +29,15 @@ uint8_t button_pressed(uint8_t pin) {
 
 int main(void) {
     // Step 1: Configure LED pin as OUTPUT
-    DDRB |= (1 << PB2) | (1 << PB1) | (1 << PB0);
+    DDRB |= (1 << 2) | (1 << 1) | (1 << 0);
     
     // Step 2: Configure button pins as INPUT with pull-ups
-    DDRD &= ~((1 << SW1_PIN) | (1 << SW2_PIN));  // Set as INPUT
-    PORTD |= (1 << SW1_PIN) | (1 << SW2_PIN);    // Enable pull-ups
+    DDRD &= ~((1 << 2) | (1 << 4));  // Set as INPUT
+    PORTD |= (1 << 2) | (1 << 4);    // Enable pull-ups
     
     // Step 3: Configure Timer1 for PWM (same as Ex02)
-    TCCR1A = (1 << COM1A1) | (1 << WGM11);
-    TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << CS12) | (1 << CS10);
+    TCCR1A = (1 << 7) | (1 << 1);
+    TCCR1B = (1 << 4) | (1 << 3) | (1 << 2) | (1 << 0);
     ICR1 = 15624;
     
     // Step 4: Initialize duty cycle to 10%
@@ -67,14 +67,13 @@ int main(void) {
             }
         }
         if (duty_cycle == 100) 
-            PORTB |= (1 << PB2);  // Turn on indicator LED
+            PORTB |= (1 << 2);  // Turn on indicator LED
         else
-            PORTB &= ~(1 << PB2); // Turn off indicator LED
+            PORTB &= ~(1 << 2); // Turn off indicator LED
         if (duty_cycle == 10) 
-            PORTB |= (1 << PB0);  // Turn on indicator LED
+            PORTB |= (1 << 0);  
         else
-            PORTB &= ~(1 << PB0); // Turn off indicator LED
-
-
+            PORTB &= ~(1 << 0);
     }
+    return 0;
 }
