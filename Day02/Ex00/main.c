@@ -30,7 +30,7 @@ Error: (125,000 - 115,200) / 115,200 = +8.5%
 UART typically tolerates up to ±5% error. So UBRR = 8 is the better choice (only -3.5% error).
 */
 
-void    UART_init(unsigned int ubrr)
+void    uart_init(unsigned int ubrr)
 {
     // Set baud rate
     UBRR0H = (unsigned char)(ubrr >> 8);
@@ -41,7 +41,22 @@ void    UART_init(unsigned int ubrr)
     UCSR0C = (1 << 2) | (1 << 1);
 }
 
+void    uart_tx(unsigned char c)
+{
+    // Wait for empty transmit buffer
+    while (!(UCSR0A & (1 << 5)));
+    // Put data into buffer, sends the data
+    UDR0 = c;
+}
+
 int main()
 {
+    uart_init(8); // UBRR value for 115200 baud with F_CPU = 16MHz
 
+    while (1)
+    {
+        uart_tx('Z');
+        _delay_ms(1000);
+    }
+    return 0;
 }

@@ -22,34 +22,19 @@ char uart_rx()
     // Get and return received data from buffer
     return UDR0;
 }
-char convert_case(char c)
-{
-    if (c >= 'a' && c <= 'z')
-        return c - ('a' - 'A');
-    else if (c >= 'A' && c <= 'Z')
-        return c + ('a' - 'A');
-    else
-        return c; 
-}
 
-ISR(USART_RX_vect)
+void    uart_tx(unsigned char c)
 {
-    char received_char = UDR0;  // read 
-    
-    // Send character
+    // Wait for empty transmit buffer
     while (!(UCSR0A & (1 << 5)));
-    UDR0 = convert_case(received_char);
+    // Put data into buffer, sends the data
+    UDR0 = c;
 }
 
-int main()
+void uart_printstr(const char *str)
 {
-    unsigned int ubrr = 8; // For 115200 baud rate with 16MHz clock
-    uart_init(ubrr);
-    sei(); // Enable global interrupts
-
-    while (1)
+    while (*str)
     {
+        uart_tx(*str++);
     }
-
-    return 0;
 }

@@ -1,3 +1,7 @@
+SRC = main.c utils.c uart_utils.c led_utils.c
+OBJ = $(SRC:.c=.o)
+TARGET = main
+
 # Variables
 MCU = atmega328p
 F_CPU = 16000000UL
@@ -13,21 +17,27 @@ CFLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os -Wall
 # Rule 'all' - executes hex then flash
 all: hex flash
 
-# Rule 'hex' - compiles main.c to main.bin, then generates main.hex from main.bin
-hex: main.hex
+# Rule 'hex' - compiles sources to objects, links to binary, then generates hex
+hex: $(TARGET).hex
 
-main.bin: main.c
-	$(CC) $(CFLAGS) -o main.bin main.c
+# Compile each .c file to .o file
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-main.hex: main.bin
-	$(OBJCOPY) -O ihex -R .eeprom main.bin main.hex
+# Link all object files into one binary
+$(TARGET).bin: $(OBJ)
+	$(CC) $(CFLAGS) -o $@ $(OBJ)
+
+# Generate hex file from binary
+$(TARGET).hex: $(TARGET).bin
+	$(OBJCOPY) -O ihex -R .eeprom $< $@
 
 # Rule 'flash' - copies main.hex to the microcontroller's flash
-flash: main.hex
-	$(AVRDUDE) -p $(MCU) -c arduino -P $(PORT) -b $(PROGRAMMER_BAUD) -U flash:w:main.hex
+flash: $(TARGET).hex
+	$(AVRDUDE) -p $(MCU) -c arduino -P $(PORT) -b $(PROGRAMMER_BAUD) -U flash:w:$(TARGET).hex
 
-# Rule 'clean' - deletes main.hex and main.bin
+# Rule 'clean' - deletes generated files
 clean:
-	rm -f main.hex main.bin
+	rm -f $(TARGET).hex $(TARGET).bin $(OBJ)
 
 .PHONY: all hex flash clean
