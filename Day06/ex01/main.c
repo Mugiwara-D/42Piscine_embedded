@@ -1,15 +1,16 @@
 #include <avr/io.h>
 #include <util/twi.h>
+#include <util/delay.h>
 /*
 Mask to get just the status bits (ignore prescaler bits)
 #define TW_STATUS_MASK 0xF8  // 0b11111000
 
 uint8_t status = TWSR & TW_STATUS_MASK;
-(section 22)
 */
 
 #define BAUD_RATE 115200
 #define UBRR_VALUE 8 
+#define AHT20_ADDR 0x38
 //((F_CPU / (16UL * BAUD_RATE)) - 1)
 
 void uart_init(void)
@@ -76,33 +77,62 @@ void i2c_write(unsigned char data)
     while (!(TWCR & (1 << TWINT)));       // Wait for completion
 }
 
+void i2c_read(void)
+{
+    TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWEA); // Enable TWI, generation of ACK
+    while (!(TWCR & (1 << TWINT)));                   // Wait for completion
+}
+
+void i2c_read_nack(void)
+{
+    TWCR = (1 << TWINT) | (1 << TWEN); // Enable TWI, no ACK generation
+    while (!(TWCR & (1 << TWINT)));     // Wait for completion
+}
+
+void print_hex_value(char c)
+{
+    const char hex_chars[] = "0123456789ABCDEF";
+    uart_tx(hex_chars[(c >> 4) & 0x0F]); // High nibble
+    uart_tx(hex_chars[c & 0x0F]);        // Low nibble
+}
+
 int main(void)
 {
     uart_init();
     i2c_init();
+    uint8_t data[7];
     
-    uart_printstr("=== I2C Communication Test with AHT20 ===\r\n\r\n");
-    
-    // Test 1: START condition
-    uart_printstr("1. Sending START condition...\r\n");
-    i2c_start();
-    uart_printstr("   Status: 0x");
-    uart_printhex(TWSR & 0xF8);
-    uart_printstr(" (expected 0x08)\r\n\r\n");
-    
-    // Test 2: Send address + Write bit
-    uart_printstr("2. Sending AHT20 address (0x38) + Write bit...\r\n");
-    i2c_write((0x38 << 1) | 0); // AHT20 address with Write bit
-    uart_printstr("   Status: 0x");
-    uart_printhex(TWSR & 0xF8);
-    uart_printstr(" (expected 0x18 if sensor responds)\r\n\r\n");
-    
-    // Test 3: STOP condition
-    uart_printstr("3. Sending STOP condition...\r\n");
-    i2c_stop();
-    uart_printstr("   Done!\r\n\r\n");
-    
-    uart_printstr("=== Test Complete ===\r\n");
-    
-    while (1);
+    while (1)
+    {
+        i2c_start();
+        i2c_write((AHT20_ADDR << 1) | 0); // Write address with write bit
+        i2c_write(0xAC); // Command byte
+        i2c_write(0x33); // Data byte 1
+        i2c_write(0x00); // Data byte 2
+        i2c_stop();
+
+        // Wait for measurement to complete 80ms (section 5.4 ATH20 datasheet)
+        _delay_ms(80);
+
+        i2c_start();
+        i2c_write((AHT20_ADDR << 1) | 1); // Write address with read bit
+        
+        for (int i = 0; i < 6; i++)
+        {
+            i2c_read();
+            data[i] = TWDR;
+        }
+        i2c_read_nack(); // Read last byte without ACK 
+        data[6] = TWDR;
+        i2c_stop();
+
+        for (int i = 0; i < 7; i++)
+        {
+            uart_printhex(data[i]);
+            uart_tx(' ');
+        }
+        uart_printstr("\r\n");
+        _delay_ms(1000); // Wait before next measurement  prevent self heatingz
+        
+    }
 }
